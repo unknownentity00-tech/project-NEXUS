@@ -140,4 +140,124 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.This expansion builds out the technical documentation for **Project Nexus**, moving from a high-level overview to the specific implementation details required for a production-ready campus super-app.
+
+---
+
+# Project Nexus: Technical Documentation & Implementation Guide
+
+## 📁 Directory Structure
+
+To maintain scalability, Project Nexus follows the **Next.js App Router** architecture with a modular domain-driven design.
+
+```text
+src/
+├── app/                  # Route handlers and UI components
+│   ├── (auth)/           # Authentication routes (Login, Signup)
+│   ├── api/              # Backend API routes (Prisma logic)
+│   ├── dashboard/        # Main student/faculty cockpit
+│   ├── exchange/         # Marketplace & Lost & Found
+│   └── explore/          # Local hub and navigation
+├── components/           # Reusable UI (Radix UI / Tailwind)
+├── lib/                  # Shared utilities (AI adapters, Prisma client)
+│   ├── ai-summarizer.ts  # OpenAI integration logic
+│   └── prisma.ts         # Singleton Database client
+└── styles/               # Global CSS and Geist font config
+
+```
+
+---
+
+## 🛠️ Module Deep-Dive
+
+### 1. The Daily Pulse (AI Integration)
+
+The **AI Mail Summarizer** is the primary ML component. It fetches incoming college correspondence and processes it via the OpenAI `gpt-4o-mini` model.
+
+* **Logic**: The system extracts the body text of an email, identifies the `Actionable Item`, `Deadline`, and `Sender`, returning a JSON object for the frontend.
+* **Prompt Engineering**: "Summarize the following campus email into one sentence under 20 words. Focus on what the student needs to do."
+
+### 2. The Student Exchange (Marketplace Logic)
+
+To prevent clutter, the marketplace implements a **7-day expiration policy** on listings.
+
+* **Database Trigger**: A cron job (or Vercel Hook) flags listings as `EXPIRED` if not renewed.
+* **Travel Sharing**: Uses a simple matching algorithm to pair students traveling to the same destination (e.g., Airport/Station) within a 30-minute window.
+
+### 3. The Academic Cockpit (Database Architecture)
+
+The core of the app relies on the `Student` ↔ `Enrollment` ↔ `Course` relationship.
+
+**Prisma Schema Snippet:**
+
+```prisma
+model Course {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  name        String
+  credits     Int
+  enrollments Enrollment[]
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  studentId String
+  courseId  String
+  status    Status   @default(PENDING)
+  student   Student  @relation(fields: [studentId], references: [id])
+  course    Course   @relation(fields: [courseId], references: [id])
+}
+
+enum Status {
+  ENROLLED
+  DROPPED
+  PENDING
+}
+
+```
+
+---
+
+## 🔐 Security & Roles
+
+Project Nexus uses **Role-Based Access Control (RBAC)**:
+
+1. **Students**: Can view menus, list items in the marketplace, and track their own grades.
+2. **Professors**: Access to the `LMS Lite` portal to upload assignments and modify course rosters.
+3. **Admins**: Manage the `Live Mess Menu` and moderate the `Lost & Found` reports.
+
+---
+
+## 📈 Evaluation Checklist & Compliance
+
+| Requirement | Implementation Status | Technical Note |
+| --- | --- | --- |
+| **2 AI/ML Components** | ✅ Mail Summarizer + AI Study Planner | Uses OpenAI API for summarization and scheduling logic. |
+| **Real-time Functionality** | ✅ Live Timetable | Implemented via SWR (Stale-While-Revalidate) for instant UI updates. |
+| **Secure Auth** | ✅ NextAuth.js | Supports JWT-based sessions and role-based middleware. |
+| **Responsive Design** | ✅ Tailwind CSS | Mobile-first approach using flexible grid layouts. |
+
+---
+
+## 🚀 Deployment
+
+### Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/nexus"
+OPENAI_API_KEY="sk-..."
+NEXTAUTH_SECRET="your-secret-key"
+
+```
+
+### Production Build
+
+```bash
+npm run build
+npm start
+
+```
+
+For detailed API documentation, navigate to `/api/docs` (if Swagger is enabled) or refer to the `src/app/api` directory for route specifications.
