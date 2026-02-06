@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+// prisma/schema.prisma
+
+ generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/* =======================
+   CORE USER / STUDENT
+======================= */
+
+model Student {
+  id          String        @id @default(uuid())
+  email       String        @unique
+  name        String?
+  enrollments Enrollment[]
+  createdAt  DateTime      @default(now())
+}
+
+/* =======================
+   FACULTY / PROFESSOR
+======================= */
+
+model Professor {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  courses   Course[]
+}
+
+/* =======================
+   COURSE
+======================= */
+
+model Course {
+  id          String        @id @default(uuid())
+  code        String        @unique
+  name        String
+  credits     Int
+  professorId String?
+
+  professor   Professor?   @relation(fields: [professorId], references: [id])
+  enrollments Enrollment[]
+}
+
+/* =======================
+   ENROLLMENT (DOMAIN LOGIC LIVES HERE)
+======================= */
+
+model Enrollment {
+  id        String        @id @default(uuid())
+  status    CourseStatus
+  studentId String
+  courseId  String
+
+  student   Student      @relation(fields: [studentId], references: [id])
+  course    Course       @relation(fields: [courseId], references: [id])
+
+  createdAt DateTime     @default(now())
+
+  @@unique([studentId, courseId])
+}
+
+/* =======================
+   ENUMS
+======================= */
+
+enum CourseStatus {
+  AVAILABLE
+  ENROLLED
+  DROPPED
+  PENDING
+}
